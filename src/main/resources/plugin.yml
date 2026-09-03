@@ -1,0 +1,14 @@
+name: MiraSellWands
+version: 0.1.0
+main: gg.mira.sellwands.MiraSellWandsPlugin
+api-version: '1.21'
+author: FiveSOCE
+depend: [Vault]
+softdepend: [MiraShop]
+commands:
+  sellwand:
+    description: Sell wand administration
+    permission: mirasellwands.admin
+permissions:
+  mirasellwands.use: {default: true}
+  mirasellwands.admin: {default: op}
