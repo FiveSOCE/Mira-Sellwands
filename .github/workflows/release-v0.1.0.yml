@@ -1,0 +1,30 @@
+name: Release v0.1.0
+on:
+  push:
+    paths:
+      - '.github/workflows/release-v0.1.0.yml'
+permissions:
+  contents: write
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout tested source
+        uses: actions/checkout@v4
+        with:
+          ref: 124c2671facfadb620dd82360f25054f657640c5
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Build
+        run: gradle build
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v0.1.0
+          name: MiraSellWands v0.1.0
+          target_commitish: 124c2671facfadb620dd82360f25054f657640c5
+          body: Initial MiraSellWands release with limited/unlimited uses, configurable multipliers, container selling through MiraShop prices/sales and Vault payouts.
+          files: build/libs/MiraSellWands-0.1.0.jar
