@@ -1,13 +1,14 @@
 name: MiraSellWands
-version: 0.1.0
+version: 0.1.1
 main: gg.mira.sellwands.MiraSellWandsPlugin
 api-version: '1.21'
 author: FiveSOCE
-depend: [Vault]
-softdepend: [MiraShop]
+description: Transaction-safe MiraShop container sell wands for the Mira ecosystem.
+depend: [MiraCore, Vault, MiraShop]
 commands:
   sellwand:
     description: Sell wand administration
+    usage: /sellwand give <player> <uses|-1> [multiplier]
     permission: mirasellwands.admin
 permissions:
   mirasellwands.use: {default: true}
