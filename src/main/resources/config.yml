@@ -1,0 +1,6 @@
+wand:
+  use-cooldown-millis: 250
+  max-multiplier: 100.0
+
+audit:
+  successful-sales: true
