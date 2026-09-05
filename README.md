@@ -4,9 +4,7 @@ MiraSellWands provides transaction-safe container sell wands for the Mira Paper 
 
 ## Download
 
-[**Download MiraSellWands v0.1.2**](https://github.com/FiveSOCE/Mira-SellWands/releases/download/v0.1.2/MiraSellWands-0.1.2.jar)
-
-[View All Releases](https://github.com/FiveSOCE/Mira-SellWands/releases)
+[**Download MiraSellWands v0.1.3**](https://github.com/FiveSOCE/Mira-Sellwands/releases/download/v0.1.3/MiraSellWands-0.1.3.jar)
 
 [View All Releases](https://github.com/FiveSOCE/Mira-Sellwands/releases)
 
@@ -35,7 +33,7 @@ Custom Mira items are not treated as ordinary material stock. MiraSellWands chec
 
 | Command | Permission | What it does |
 | --- | --- | --- |
-| `/sellwand give <player> <uses|-1> [multiplier]` | `mirasellwands.admin` | Gives a uniquely serialized sell wand. `-1` means unlimited uses. |
+| `/sellwand give <player> <tier|uses|-1> [multiplier]` | `mirasellwands.admin` | Gives a configured tier or a custom uniquely serialized wand. `-1` means unlimited uses. |
 
 ## Permissions
 
@@ -58,6 +56,7 @@ A typed `SellWandSaleEvent` fires after a successful payout and container mutati
 
 - minimum repeat-use spacing with `wand.use-cooldown-millis`
 - the maximum accepted multiplier with `wand.max-multiplier`
+- configurable `wand.tiers` definitions for uses and multiplier
 - whether successful sales are written to Core audit history
 
 ## Building
@@ -71,3 +70,19 @@ The output JAR is created in `build/libs/`.
 ## MiraCosmetics Audio Integration (0.1.2)
 
 Adds optional MiraCosmetics audio for successful container cash-outs. Each completed wand transaction emits one SellWand audio event.
+
+## SellWand Tiers and Charges (0.1.3)
+
+v0.1.3 formalizes the existing charge system into configurable tiers while preserving custom numeric admin creation.
+
+Default tiers:
+
+| Tier | Default Uses | Default Multiplier |
+| --- | ---: | ---: |
+| `BASIC` | 50 | 1.00x |
+| `ADVANCED` | 250 | 1.00x |
+| `UNLIMITED` | -1 | 1.00x |
+
+A use is consumed **only after** the Vault payout succeeds and the container mutation completes. Failed/empty sales do not burn charges.
+
+Other Mira plugins can create configured tier wands through `SellWandsApi#createTier(String)`.
