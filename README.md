@@ -4,7 +4,9 @@ MiraSellWands provides transaction-safe container sell wands for the Mira Paper 
 
 ## Download
 
-[**Download MiraSellWands v0.1.1**](https://github.com/FiveSOCE/Mira-Sellwands/releases/download/v0.1.1/MiraSellWands-0.1.1.jar)
+[**Download MiraSellWands v0.1.2**](https://github.com/FiveSOCE/Mira-SellWands/releases/download/v0.1.2/MiraSellWands-0.1.2.jar)
+
+[View All Releases](https://github.com/FiveSOCE/Mira-SellWands/releases)
 
 [View All Releases](https://github.com/FiveSOCE/Mira-Sellwands/releases)
 
@@ -65,3 +67,7 @@ gradle clean build
 ```
 
 The output JAR is created in `build/libs/`.
+
+## MiraCosmetics Audio Integration (0.1.2)
+
+Adds optional MiraCosmetics audio for successful container cash-outs. Each completed wand transaction emits one SellWand audio event.
