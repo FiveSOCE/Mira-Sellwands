@@ -27,19 +27,19 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: success()
         with:
-          name: MiraSellWands-0.1.2
-          path: build/libs/MiraSellWands-0.1.2.jar
+          name: MiraSellWands-0.1.3
+          path: build/libs/MiraSellWands-0.1.3.jar
           if-no-files-found: error
 
-      - name: Publish v0.1.2 release if missing
+      - name: Publish v0.1.3 release if missing
         if: github.event_name != 'pull_request'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if ! gh release view v0.1.2 >/dev/null 2>&1; then
-            gh release create v0.1.2 \
-              build/libs/MiraSellWands-0.1.2.jar \
+          if ! gh release view v0.1.3 >/dev/null 2>&1; then
+            gh release create v0.1.3 \
+              build/libs/MiraSellWands-0.1.3.jar \
               --target "${{ github.sha }}" \
-              --title "MiraSellWands v0.1.2" \
-              --notes "Adds optional MiraCosmetics audio for successful container SellWand cash-outs while preserving transaction safety and analytics."
+              --title "MiraSellWands v0.1.3" \
+              --notes "Formalizes SellWand charges into configurable BASIC, ADVANCED and UNLIMITED tiers while preserving numeric custom-wand admin creation and consuming charges only after successful transactional sales."
           fi
