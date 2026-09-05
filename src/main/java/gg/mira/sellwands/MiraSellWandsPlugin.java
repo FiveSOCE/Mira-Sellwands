@@ -235,9 +235,10 @@ public final class MiraSellWandsPlugin extends JavaPlugin implements Listener {
 
         decrement(wand);
 
+        Location saleLocation = event.getClickedBlock().getLocation();
         Bukkit.getPluginManager().callEvent(new SellWandSaleEvent(
-                player, serial, plan.units(), plan.baseMoney(), multiplier, payout,
-                event.getClickedBlock().getLocation()));
+                player, serial, plan.units(), plan.baseMoney(), multiplier, payout, saleLocation));
+        CosmeticsBridge.play(player, "sellwand_sale", saleLocation);
 
         if (getConfig().getBoolean("audit.successful-sales", true)) {
             core.audit().record("MiraSellWands", "WAND_SALE",
