@@ -38,6 +38,7 @@ public final class MiraSellWandsPlugin extends JavaPlugin implements Listener {
     private NamespacedKey usesKey;
     private NamespacedKey multiplierKey;
     private NamespacedKey serialKey;
+    private NamespacedKey tierKey;
 
     private MiraCore core;
     private MiraShopPlugin shop;
@@ -55,6 +56,7 @@ public final class MiraSellWandsPlugin extends JavaPlugin implements Listener {
         usesKey = new NamespacedKey(this, "uses");
         multiplierKey = new NamespacedKey(this, "multiplier");
         serialKey = new NamespacedKey(this, "serial");
+        tierKey = new NamespacedKey(this, "tier");
 
         var shopPlugin = Bukkit.getPluginManager().getPlugin("MiraShop");
         if (!(shopPlugin instanceof MiraShopPlugin miraShop)) {
@@ -105,12 +107,25 @@ public final class MiraSellWandsPlugin extends JavaPlugin implements Listener {
 
         int uses;
         double multiplier = 1D;
-        try {
-            uses = Integer.parseInt(args[2]);
-            if (args.length >= 4) multiplier = Double.parseDouble(args[3]);
-        } catch (NumberFormatException exception) {
-            msg(sender, "&cInvalid uses or multiplier.");
-            return true;
+        String tier = "CUSTOM";
+
+        WandTier configured = tier(args[2]).orElse(null);
+        if (configured != null) {
+            uses = configured.uses();
+            multiplier = configured.multiplier();
+            tier = configured.id();
+            if (args.length >= 4) {
+                msg(sender, "&cTiered wands use their configured multiplier. Omit the multiplier argument.");
+                return true;
+            }
+        } else {
+            try {
+                uses = Integer.parseInt(args[2]);
+                if (args.length >= 4) multiplier = Double.parseDouble(args[3]);
+            } catch (NumberFormatException exception) {
+                msg(sender, "&cUnknown tier or invalid uses/multiplier.");
+                return true;
+            }
         }
 
         if (uses != -1 && uses <= 0) {
@@ -124,7 +139,7 @@ public final class MiraSellWandsPlugin extends JavaPlugin implements Listener {
             return true;
         }
 
-        ItemStack wand = createWand(uses, multiplier);
+        ItemStack wand = createWand(uses, multiplier, tier);
         String serial = serial(wand);
         Map<Integer, ItemStack> leftovers = target.getInventory().addItem(wand);
         leftovers.values().forEach(item -> target.getWorld().dropItemNaturally(target.getLocation(), item));
@@ -136,7 +151,8 @@ public final class MiraSellWandsPlugin extends JavaPlugin implements Listener {
                         "target", target.getUniqueId().toString(),
                         "targetName", target.getName(),
                         "uses", Integer.toString(uses),
-                        "multiplier", Double.toString(multiplier)
+                        "multiplier", Double.toString(multiplier),
+                        "tier", tier
                 ));
 
         msg(sender, "&aSell wand given to &f" + target.getName() + "&a. Serial &f" + shortSerial(serial) + "&a.");
@@ -151,7 +167,9 @@ public final class MiraSellWandsPlugin extends JavaPlugin implements Listener {
             return complete(args[1], Bukkit.getOnlinePlayers().stream().map(Player::getName).toList());
         }
         if (args.length == 3 && args[0].equalsIgnoreCase("give")) {
-            return complete(args[2], List.of("1", "5", "10", "25", "50", "-1"));
+            List<String> values = new ArrayList<>(tierIds());
+            values.addAll(List.of("1", "5", "10", "25", "50", "-1"));
+            return complete(args[2], values);
         }
         if (args.length == 4 && args[0].equalsIgnoreCase("give")) {
             return complete(args[3], List.of("1", "1.25", "1.5", "2", "3"));
@@ -315,6 +333,10 @@ public final class MiraSellWandsPlugin extends JavaPlugin implements Listener {
     }
 
     private ItemStack createWand(int uses, double multiplier) {
+        return createWand(uses, multiplier, "CUSTOM");
+    }
+
+    private ItemStack createWand(int uses, double multiplier, String tier) {
         ItemStack item = new ItemStack(Material.BLAZE_ROD);
         ItemMeta meta = item.getItemMeta();
         String serial = UUID.randomUUID().toString();
@@ -324,7 +346,8 @@ public final class MiraSellWandsPlugin extends JavaPlugin implements Listener {
         meta.getPersistentDataContainer().set(usesKey, PersistentDataType.INTEGER, uses);
         meta.getPersistentDataContainer().set(multiplierKey, PersistentDataType.DOUBLE, multiplier);
         meta.getPersistentDataContainer().set(serialKey, PersistentDataType.STRING, serial);
-        applyLore(meta, uses, multiplier);
+        meta.getPersistentDataContainer().set(tierKey, PersistentDataType.STRING, tier == null ? "CUSTOM" : tier);
+        applyLore(meta, uses, multiplier, tier == null ? "CUSTOM" : tier);
         item.setItemMeta(meta);
         return item;
     }
@@ -367,16 +390,43 @@ public final class MiraSellWandsPlugin extends JavaPlugin implements Listener {
 
         pdc.set(usesKey, PersistentDataType.INTEGER, uses);
         double multiplier = pdc.getOrDefault(multiplierKey, PersistentDataType.DOUBLE, 1D);
-        applyLore(meta, uses, multiplier);
+        String tier = pdc.getOrDefault(tierKey, PersistentDataType.STRING, "CUSTOM");
+        applyLore(meta, uses, multiplier, tier);
         wand.setItemMeta(meta);
     }
 
-    private void applyLore(ItemMeta meta, int uses, double multiplier) {
+    private void applyLore(ItemMeta meta, int uses, double multiplier, String tier) {
         meta.lore(List.of(
                 Component.text("Right-click a container to sell its safe MiraShop contents."),
+                Component.text("Tier: " + prettyTier(tier)),
                 Component.text("Uses: " + (uses == -1 ? "Unlimited" : uses)),
                 Component.text("Multiplier: " + String.format(Locale.US, "%.2f", multiplier) + "x")
         ));
+    }
+
+    private Optional<WandTier> tier(String raw) {
+        if (raw == null || raw.isBlank()) return Optional.empty();
+        String id = raw.trim().toUpperCase(Locale.ROOT);
+        String base = "wand.tiers." + id.toLowerCase(Locale.ROOT);
+        if (!getConfig().isConfigurationSection(base)) return Optional.empty();
+        int uses = getConfig().getInt(base + ".uses", 50);
+        double multiplier = getConfig().getDouble(base + ".multiplier", 1D);
+        if (uses != -1 && uses <= 0) return Optional.empty();
+        double max = Math.max(1D, getConfig().getDouble("wand.max-multiplier", 100D));
+        if (!Double.isFinite(multiplier) || multiplier <= 0D || multiplier > max) return Optional.empty();
+        return Optional.of(new WandTier(id, uses, multiplier));
+    }
+
+    private List<String> tierIds() {
+        var section = getConfig().getConfigurationSection("wand.tiers");
+        if (section == null) return List.of();
+        return section.getKeys(false).stream().map(String::toUpperCase).sorted().toList();
+    }
+
+    private static String prettyTier(String raw) {
+        if (raw == null || raw.isBlank()) return "Custom";
+        String lower = raw.toLowerCase(Locale.ROOT).replace('_', ' ');
+        return Character.toUpperCase(lower.charAt(0)) + lower.substring(1);
     }
 
     private static ItemStack[] cloneContents(ItemStack[] source) {
@@ -409,6 +459,7 @@ public final class MiraSellWandsPlugin extends JavaPlugin implements Listener {
 
     public interface SellWandsApi {
         ItemStack create(int uses, double multiplier);
+        ItemStack createTier(String tier);
         boolean isSellWand(ItemStack item);
         int uses(ItemStack item);
         double multiplier(ItemStack item);
@@ -424,6 +475,13 @@ public final class MiraSellWandsPlugin extends JavaPlugin implements Listener {
                 throw new IllegalArgumentException("invalid multiplier");
             }
             return createWand(uses, multiplier);
+        }
+
+        @Override
+        public ItemStack createTier(String tier) {
+            WandTier configured = MiraSellWandsPlugin.this.tier(tier)
+                    .orElseThrow(() -> new IllegalArgumentException("unknown sell wand tier"));
+            return createWand(configured.uses(), configured.multiplier(), configured.id());
         }
 
         @Override public boolean isSellWand(ItemStack item) { return isWand(item); }
@@ -449,6 +507,8 @@ public final class MiraSellWandsPlugin extends JavaPlugin implements Listener {
             return value.isBlank() ? Optional.empty() : Optional.of(value);
         }
     }
+
+    private record WandTier(String id, int uses, double multiplier) { }
 
     private record SaleLine(int units, double baseMoney) { }
 
