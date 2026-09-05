@@ -1,6 +1,16 @@
 wand:
   use-cooldown-millis: 250
   max-multiplier: 100.0
+  tiers:
+    basic:
+      uses: 50
+      multiplier: 1.0
+    advanced:
+      uses: 250
+      multiplier: 1.0
+    unlimited:
+      uses: -1
+      multiplier: 1.0
 
 audit:
   successful-sales: true
