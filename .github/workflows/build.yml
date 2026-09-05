@@ -27,19 +27,19 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: success()
         with:
-          name: MiraSellWands-0.1.1
-          path: build/libs/MiraSellWands-0.1.1.jar
+          name: MiraSellWands-0.1.2
+          path: build/libs/MiraSellWands-0.1.2.jar
           if-no-files-found: error
 
-      - name: Publish v0.1.1 release if missing
+      - name: Publish v0.1.2 release if missing
         if: github.event_name != 'pull_request'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if ! gh release view v0.1.1 >/dev/null 2>&1; then
-            gh release create v0.1.1 \
-              build/libs/MiraSellWands-0.1.1.jar \
+          if ! gh release view v0.1.2 >/dev/null 2>&1; then
+            gh release create v0.1.2 \
+              build/libs/MiraSellWands-0.1.2.jar \
               --target "${{ github.sha }}" \
-              --title "MiraSellWands v0.1.1" \
-              --notes "Adds transaction-safe Vault payouts with rollback, strict custom-item protection, direct MiraShop 0.1.8 pricing integration, Core audit/service registration, serialized wand APIs and typed successful-sale events."
+              --title "MiraSellWands v0.1.2" \
+              --notes "Adds optional MiraCosmetics audio for successful container SellWand cash-outs while preserving transaction safety and analytics."
           fi
