@@ -37,8 +37,9 @@ final class CollectorBridge {
             boolean success = (boolean) result.getClass().getMethod("success").invoke(result);
             long units = ((Number) result.getClass().getMethod("units").invoke(result)).longValue();
             double payout = ((Number) result.getClass().getMethod("payout").invoke(result)).doubleValue();
+            String label = String.valueOf(result.getClass().getMethod("label").invoke(result));
             String message = String.valueOf(result.getClass().getMethod("message").invoke(result));
-            return new SaleResult(success, units, payout, message == null ? "" : message);
+            return new SaleResult(success, units, payout, label == null ? "Items" : label, message == null ? "" : message);
         } catch (ReflectiveOperationException | RuntimeException exception) {
             owner.getLogger().warning("MiraCollectors bridge failed: " + exception.getClass().getSimpleName()
                     + (exception.getMessage() == null ? "" : " - " + exception.getMessage()));
@@ -60,7 +61,7 @@ final class CollectorBridge {
         return null;
     }
 
-    record SaleResult(boolean success, long units, double payout, String message) {
-        static SaleResult fail(String message) { return new SaleResult(false, 0L, 0D, message); }
+    record SaleResult(boolean success, long units, double payout, String label, String message) {
+        static SaleResult fail(String message) { return new SaleResult(false, 0L, 0D, "Items", message); }
     }
 }
