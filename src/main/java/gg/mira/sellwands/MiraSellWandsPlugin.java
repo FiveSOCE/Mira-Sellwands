@@ -348,7 +348,7 @@ public final class MiraSellWandsPlugin extends JavaPlugin implements Listener {
                         "z", Integer.toString(location.getBlockZ())
                 ));
 
-        msg(player, "&aSold &f" + result.units() + " &aItems for &f$" + formatMoney(result.payout()));
+        msg(player, "&aSold &f" + result.units() + " &a" + result.label() + " for &f$" + formatMoney(result.payout()));
     }
 
     private ShopBridge createShopBridge() {
