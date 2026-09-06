@@ -1,47 +1,81 @@
 package gg.mira.sellwands;
 
-import com.mira.shop.MiraShopPlugin;
-import com.mira.shop.model.ShopItem;
 import org.bukkit.Bukkit;
+import org.bukkit.Material;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.lang.reflect.Method;
+import java.util.Collection;
+
 final class MiraShopBridge implements ShopBridge {
-    private final MiraShopPlugin shop;
+    private Plugin shop;
 
     MiraShopBridge(JavaPlugin plugin) {
-        var raw = Bukkit.getPluginManager().getPlugin("MiraShop");
-        this.shop = raw instanceof MiraShopPlugin miraShop && raw.isEnabled() ? miraShop : null;
+        refresh();
     }
 
     @Override
     public boolean available() {
-        return shop != null;
+        refresh();
+        return shop != null && shop.isEnabled();
     }
 
     @Override
     public Match match(ItemStack stack) {
-        if (shop == null || stack == null || stack.getType().isAir()) return null;
+        if (!available() || stack == null || stack.getType().isAir()) return null;
 
-        ShopItem generic = null;
-        for (var section : shop.catalog().sections()) {
-            for (ShopItem item : section.items()) {
-                if (!item.canSell() || item.material() != stack.getType()) continue;
-                if (item.customTemplate() && shop.catalog().matches(stack, item)) {
-                    return new Match(item, shop.sales().sellPrice(item));
+        try {
+            Object catalog = shop.getClass().getMethod("catalog").invoke(shop);
+            Object sales = shop.getClass().getMethod("sales").invoke(shop);
+            Collection<?> sections = (Collection<?>) catalog.getClass().getMethod("sections").invoke(catalog);
+
+            Object generic = null;
+            for (Object section : sections) {
+                Collection<?> items = (Collection<?>) section.getClass().getMethod("items").invoke(section);
+                for (Object item : items) {
+                    boolean canSell = (boolean) item.getClass().getMethod("canSell").invoke(item);
+                    Material material = (Material) item.getClass().getMethod("material").invoke(item);
+                    if (!canSell || material != stack.getType()) continue;
+
+                    boolean custom = (boolean) item.getClass().getMethod("customTemplate").invoke(item);
+                    if (custom) {
+                        boolean matches = (boolean) catalog.getClass()
+                                .getMethod("matches", ItemStack.class, item.getClass())
+                                .invoke(catalog, stack, item);
+                        if (matches) return new Match(item, sellPrice(sales, item));
+                    } else if (generic == null) {
+                        generic = item;
+                    }
                 }
-                if (!item.customTemplate() && generic == null) generic = item;
             }
-        }
 
-        if (generic == null || !isPlainGenericStack(stack)) return null;
-        return new Match(generic, shop.sales().sellPrice(generic));
+            if (generic == null || !isPlainGenericStack(stack)) return null;
+            return new Match(generic, sellPrice(sales, generic));
+        } catch (ReflectiveOperationException | RuntimeException exception) {
+            return null;
+        }
     }
 
     @Override
     public void recordSell(Object token, int units, double money) {
-        if (shop == null || !(token instanceof ShopItem item)) return;
-        shop.stats().recordSell(item, units, money);
+        if (!available() || token == null) return;
+        try {
+            Object stats = shop.getClass().getMethod("stats").invoke(shop);
+            Method record = stats.getClass().getMethod("recordSell", token.getClass(), int.class, double.class);
+            record.invoke(stats, token, units, money);
+        } catch (ReflectiveOperationException | RuntimeException ignored) {
+        }
+    }
+
+    private double sellPrice(Object sales, Object item) throws ReflectiveOperationException {
+        return ((Number) sales.getClass().getMethod("sellPrice", item.getClass()).invoke(sales, item)).doubleValue();
+    }
+
+    private void refresh() {
+        Plugin candidate = Bukkit.getPluginManager().getPlugin("MiraShop");
+        shop = candidate != null && candidate.isEnabled() ? candidate : null;
     }
 
     private boolean isPlainGenericStack(ItemStack stack) {
