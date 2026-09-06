@@ -7,8 +7,6 @@ import com.mira.shop.MiraShopPlugin;
 import com.mira.shop.model.ShopItem;
 import gg.mira.sellwands.api.event.SellWandSaleEvent;
 import net.kyori.adventure.text.Component;
-import net.milkbowl.vault.economy.Economy;
-import net.milkbowl.vault.economy.EconomyResponse;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -42,7 +40,7 @@ public final class MiraSellWandsPlugin extends JavaPlugin implements Listener {
 
     private MiraCore core;
     private MiraShopPlugin shop;
-    private Economy economy;
+    private EconomyBridge economy;
     private SellWandsApi api;
 
     private final Map<UUID, Long> lastUse = new HashMap<>();
@@ -64,17 +62,16 @@ public final class MiraSellWandsPlugin extends JavaPlugin implements Listener {
         }
         shop = miraShop;
 
-        var economyRegistration = getServer().getServicesManager().getRegistration(Economy.class);
-        economy = economyRegistration == null ? null : economyRegistration.getProvider();
+        economy = createEconomyBridge();
 
         api = new SellWandsApiImpl();
         getServer().getServicesManager().register(SellWandsApi.class, api, this, ServicePriority.Normal);
         core.services().register(SellWandsApi.class, api);
         core.modules().register(this, "MiraSellWands");
         core.modules().setHealth(this,
-                economy == null ? ModuleHealth.DEGRADED : ModuleHealth.HEALTHY,
-                economy == null
-                        ? "Vault is present but no economy provider is currently registered"
+                economy == null || !economy.available() ? ModuleHealth.DEGRADED : ModuleHealth.HEALTHY,
+                economy == null || !economy.available()
+                        ? "No compatible Vault economy provider is currently registered"
                         : "Transactional container selling, MiraShop pricing and audited wand identity ready");
 
         getServer().getPluginManager().registerEvents(this, this);
@@ -187,7 +184,7 @@ public final class MiraSellWandsPlugin extends JavaPlugin implements Listener {
         event.setCancelled(true);
         Player player = event.getPlayer();
 
-        if (economy == null) {
+        if (economy == null || !economy.available()) {
             msg(player, "&cNo Vault economy provider is currently available.");
             return;
         }
@@ -227,8 +224,7 @@ public final class MiraSellWandsPlugin extends JavaPlugin implements Listener {
             return;
         }
 
-        EconomyResponse deposit = economy.depositPlayer(player, payout);
-        if (deposit == null || !deposit.transactionSuccess()) {
+        if (!economy.deposit(player, payout)) {
             msg(player, "&cThe economy rejected the payout. Nothing was removed from the container.");
             return;
         }
@@ -236,8 +232,7 @@ public final class MiraSellWandsPlugin extends JavaPlugin implements Listener {
         try {
             container.getInventory().setContents(plan.resultContents());
         } catch (RuntimeException exception) {
-            EconomyResponse rollback = economy.withdrawPlayer(player, payout);
-            if (rollback == null || !rollback.transactionSuccess()) {
+            if (!economy.withdraw(player, payout)) {
                 getLogger().severe("CRITICAL: Could not roll back $" + payout + " after a failed container mutation for "
                         + player.getUniqueId() + " wand " + serial);
             }
@@ -277,6 +272,18 @@ public final class MiraSellWandsPlugin extends JavaPlugin implements Listener {
         msg(player, "&aSold &f" + plan.units() + " &aitems for &f$"
                 + String.format(Locale.US, "%.2f", payout)
                 + "&a using wand &f" + shortSerial(serial) + "&a.");
+    }
+
+    private EconomyBridge createEconomyBridge() {
+        try {
+            Class<?> type = Class.forName("gg.mira.sellwands.VaultEconomyBridge", true, getClassLoader());
+            Object instance = type.getDeclaredConstructor(JavaPlugin.class).newInstance(this);
+            return instance instanceof EconomyBridge bridge ? bridge : null;
+        } catch (Throwable throwable) {
+            getLogger().warning("Vault economy bridge unavailable: " + throwable.getClass().getSimpleName()
+                    + (throwable.getMessage() == null ? "" : " - " + throwable.getMessage()));
+            return null;
+        }
     }
 
     private SalePlan planSale(Inventory inventory) {
