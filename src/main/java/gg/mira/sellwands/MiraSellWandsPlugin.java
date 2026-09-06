@@ -39,6 +39,7 @@ public final class MiraSellWandsPlugin extends JavaPlugin implements Listener {
     private MiraCore core;
     private ShopBridge shop;
     private EconomyBridge economy;
+    private CollectorBridge collectors;
     private SellWandsApi api;
 
     private final Map<UUID, Long> lastUse = new HashMap<>();
@@ -56,6 +57,7 @@ public final class MiraSellWandsPlugin extends JavaPlugin implements Listener {
 
         shop = createShopBridge();
         economy = createEconomyBridge();
+        collectors = new CollectorBridge(this);
 
         api = new SellWandsApiImpl();
         getServer().getServicesManager().register(SellWandsApi.class, api, this, ServicePriority.Normal);
@@ -176,10 +178,19 @@ public final class MiraSellWandsPlugin extends JavaPlugin implements Listener {
         if (event.getAction() != Action.RIGHT_CLICK_BLOCK || event.getClickedBlock() == null) return;
         ItemStack wand = event.getItem();
         if (!isWand(wand) || !event.getPlayer().hasPermission("mirasellwands.use")) return;
+
+        Player player = event.getPlayer();
+        Location clickedLocation = event.getClickedBlock().getLocation();
+
+        if (collectors != null && collectors.isCollector(clickedLocation)) {
+            event.setCancelled(true);
+            handleCollectorSale(player, wand, clickedLocation);
+            return;
+        }
+
         if (!(event.getClickedBlock().getState() instanceof Container container)) return;
 
         event.setCancelled(true);
-        Player player = event.getPlayer();
 
         if (shop == null || !shop.available()) {
             shop = createShopBridge();
@@ -276,6 +287,70 @@ public final class MiraSellWandsPlugin extends JavaPlugin implements Listener {
 
         msg(player, "&aSold &f" + plan.units() + " &aitems for &f$"
                 + String.format(Locale.US, "%.2f", payout)
+                + "&a using wand &f" + shortSerial(serial) + "&a.");
+    }
+
+    private void handleCollectorSale(Player player, ItemStack wand, Location location) {
+        long now = System.currentTimeMillis();
+        long cooldown = Math.max(0L, getConfig().getLong("wand.use-cooldown-millis", 250L));
+        long previous = lastUse.getOrDefault(player.getUniqueId(), 0L);
+        if (cooldown > 0L && now - previous < cooldown) return;
+
+        ItemMeta meta = wand.getItemMeta();
+        PersistentDataContainer pdc = meta.getPersistentDataContainer();
+        int uses = pdc.getOrDefault(usesKey, PersistentDataType.INTEGER, 1);
+        double multiplier = pdc.getOrDefault(multiplierKey, PersistentDataType.DOUBLE, 1D);
+
+        if (uses != -1 && uses <= 0) {
+            msg(player, "&cThat sell wand has no uses remaining.");
+            return;
+        }
+
+        double maxMultiplier = Math.max(1D, getConfig().getDouble("wand.max-multiplier", 100D));
+        if (!Double.isFinite(multiplier) || multiplier <= 0D || multiplier > maxMultiplier) {
+            msg(player, "&cThat sell wand has invalid multiplier data.");
+            return;
+        }
+
+        lastUse.put(player.getUniqueId(), now);
+        String serial = ensureSerial(wand);
+        CollectorBridge.SaleResult result = collectors.sellAll(player, location, multiplier);
+        if (!result.success()) {
+            msg(player, "&e" + result.message());
+            return;
+        }
+
+        int units;
+        try {
+            units = Math.toIntExact(result.units());
+        } catch (ArithmeticException ex) {
+            getLogger().severe("Collector sale exceeded SellWandSaleEvent int unit range for " + player.getUniqueId());
+            msg(player, "&cCollector sale completed, but the sale event count overflowed.");
+            decrement(wand);
+            return;
+        }
+
+        decrement(wand);
+        double baseMoney = result.payout() / multiplier;
+        Bukkit.getPluginManager().callEvent(new SellWandSaleEvent(
+                player, serial, units, baseMoney, multiplier, result.payout(), location));
+        CosmeticsBridge.play(player, "sellwand_sale", location);
+
+        core.audit().record("MiraSellWands", "WAND_COLLECTOR_SALE",
+                player.getUniqueId(), player.getName(), serial, "Collector sold with sell wand",
+                Map.of(
+                        "units", Long.toString(result.units()),
+                        "baseMoney", Double.toString(baseMoney),
+                        "multiplier", Double.toString(multiplier),
+                        "payout", Double.toString(result.payout()),
+                        "world", location.getWorld().getName(),
+                        "x", Integer.toString(location.getBlockX()),
+                        "y", Integer.toString(location.getBlockY()),
+                        "z", Integer.toString(location.getBlockZ())
+                ));
+
+        msg(player, "&aSold &f" + result.units() + " &aitems from the collector for &f$"
+                + String.format(Locale.US, "%.2f", result.payout())
                 + "&a using wand &f" + shortSerial(serial) + "&a.");
     }
 
