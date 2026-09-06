@@ -4,7 +4,7 @@ MiraSellWands provides transaction-safe container sell wands for the Mira Paper 
 
 ## Download
 
-[**Download MiraSellWands v0.1.3**](https://github.com/FiveSOCE/Mira-Sellwands/releases/download/v0.1.3/MiraSellWands-0.1.3.jar)
+[**Download MiraSellWands v0.1.4**](https://github.com/FiveSOCE/Mira-Sellwands/releases/download/v0.1.4/MiraSellWands-0.1.4.jar)
 
 [View All Releases](https://github.com/FiveSOCE/Mira-Sellwands/releases)
 
@@ -12,10 +12,20 @@ MiraSellWands provides transaction-safe container sell wands for the Mira Paper 
 
 - Paper 1.21.11
 - Java 21
-- MiraCore 0.2.0 or newer
-- MiraShop 0.1.8 or newer
-- Vault
-- A Vault-compatible economy provider
+- MiraCore 0.4.1 or newer
+- MiraShop 0.1.12 or newer
+- Vault is optional for plugin bootstrap, but required for actual selling
+- A Vault-compatible economy provider is required for payouts
+
+## Bootstrap compatibility fix (0.1.4)
+
+v0.1.4 fixes a plugin-recognition/bootstrap issue.
+
+- Vault is no longer a hard `plugin.yml` dependency.
+- Vault API classes are isolated behind an optional economy bridge, so Paper can recognize and enable MiraSellWands even when Vault is absent or unavailable during dependency resolution.
+- Without a compatible Vault economy provider, MiraSellWands loads in a degraded state and selling is disabled with a clear message.
+- The build now targets MiraCore 0.4.1 and MiraShop 0.1.12.
+- Release publishing is restricted to explicit `release/**` branches.
 
 ## How MiraSellWands Works
 
@@ -73,7 +83,7 @@ Adds optional MiraCosmetics audio for successful container cash-outs. Each compl
 
 ## SellWand Tiers and Charges (0.1.3)
 
-v0.1.3 formalizes the existing charge system into configurable tiers while preserving custom numeric admin creation.
+v0.1.4 formalizes the existing charge system into configurable tiers while preserving custom numeric admin creation.
 
 Default tiers:
 
