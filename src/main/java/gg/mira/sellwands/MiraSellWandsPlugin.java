@@ -3,8 +3,6 @@ package gg.mira.sellwands;
 import com.mira.core.api.MiraCore;
 import com.mira.core.api.MiraCoreProvider;
 import com.mira.core.api.ModuleHealth;
-import com.mira.shop.MiraShopPlugin;
-import com.mira.shop.model.ShopItem;
 import gg.mira.sellwands.api.event.SellWandSaleEvent;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
@@ -39,7 +37,7 @@ public final class MiraSellWandsPlugin extends JavaPlugin implements Listener {
     private NamespacedKey tierKey;
 
     private MiraCore core;
-    private MiraShopPlugin shop;
+    private ShopBridge shop;
     private EconomyBridge economy;
     private SellWandsApi api;
 
@@ -56,21 +54,20 @@ public final class MiraSellWandsPlugin extends JavaPlugin implements Listener {
         serialKey = new NamespacedKey(this, "serial");
         tierKey = new NamespacedKey(this, "tier");
 
-        var shopPlugin = Bukkit.getPluginManager().getPlugin("MiraShop");
-        if (!(shopPlugin instanceof MiraShopPlugin miraShop)) {
-            throw new IllegalStateException("MiraShop is required but was not available.");
-        }
-        shop = miraShop;
-
+        shop = createShopBridge();
         economy = createEconomyBridge();
 
         api = new SellWandsApiImpl();
         getServer().getServicesManager().register(SellWandsApi.class, api, this, ServicePriority.Normal);
         core.services().register(SellWandsApi.class, api);
         core.modules().register(this, "MiraSellWands");
+        boolean shopReady = shop != null && shop.available();
+        boolean economyReady = economy != null && economy.available();
         core.modules().setHealth(this,
-                economy == null || !economy.available() ? ModuleHealth.DEGRADED : ModuleHealth.HEALTHY,
-                economy == null || !economy.available()
+                shopReady && economyReady ? ModuleHealth.HEALTHY : ModuleHealth.DEGRADED,
+                !shopReady
+                        ? "MiraShop is not currently available; sell wand use is disabled"
+                        : !economyReady
                         ? "No compatible Vault economy provider is currently registered"
                         : "Transactional container selling, MiraShop pricing and audited wand identity ready");
 
@@ -184,6 +181,11 @@ public final class MiraSellWandsPlugin extends JavaPlugin implements Listener {
         event.setCancelled(true);
         Player player = event.getPlayer();
 
+        if (shop == null || !shop.available()) {
+            msg(player, "&cMiraShop is currently unavailable, so sell wands cannot price items.");
+            return;
+        }
+
         if (economy == null || !economy.available()) {
             msg(player, "&cNo Vault economy provider is currently available.");
             return;
@@ -242,8 +244,8 @@ public final class MiraSellWandsPlugin extends JavaPlugin implements Listener {
             return;
         }
 
-        for (Map.Entry<ShopItem, SaleLine> entry : plan.lines().entrySet()) {
-            shop.stats().recordSell(entry.getKey(), entry.getValue().units(),
+        for (Map.Entry<Object, SaleLine> entry : plan.lines().entrySet()) {
+            shop.recordSell(entry.getKey(), entry.getValue().units(),
                     entry.getValue().baseMoney() * multiplier);
         }
 
@@ -274,6 +276,18 @@ public final class MiraSellWandsPlugin extends JavaPlugin implements Listener {
                 + "&a using wand &f" + shortSerial(serial) + "&a.");
     }
 
+    private ShopBridge createShopBridge() {
+        try {
+            Class<?> type = Class.forName("gg.mira.sellwands.MiraShopBridge", true, getClassLoader());
+            Object instance = type.getDeclaredConstructor(JavaPlugin.class).newInstance(this);
+            return instance instanceof ShopBridge bridge ? bridge : null;
+        } catch (Throwable throwable) {
+            getLogger().warning("MiraShop bridge unavailable: " + throwable.getClass().getSimpleName()
+                    + (throwable.getMessage() == null ? "" : " - " + throwable.getMessage()));
+            return null;
+        }
+    }
+
     private EconomyBridge createEconomyBridge() {
         try {
             Class<?> type = Class.forName("gg.mira.sellwands.VaultEconomyBridge", true, getClassLoader());
@@ -291,17 +305,16 @@ public final class MiraSellWandsPlugin extends JavaPlugin implements Listener {
         ItemStack[] result = cloneContents(original);
         int units = 0;
         double total = 0D;
-        Map<ShopItem, SaleLine> lines = new LinkedHashMap<>();
+        Map<Object, SaleLine> lines = new LinkedHashMap<>();
 
         for (int slot = 0; slot < original.length; slot++) {
             ItemStack stack = original[slot];
             if (stack == null || stack.getType().isAir()) continue;
 
-            ShopItem item = findSafeSellMatch(stack);
-            if (item == null || !item.canSell()) continue;
+            ShopBridge.Match match = shop.match(stack);
+            if (match == null) continue;
 
-            double unitPrice = shop.sales().sellPrice(item);
-            double money = safeMultiply(unitPrice, stack.getAmount());
+            double money = safeMultiply(match.unitPrice(), stack.getAmount());
             if (money < 0D) continue;
 
             int amount = stack.getAmount();
@@ -309,34 +322,14 @@ public final class MiraSellWandsPlugin extends JavaPlugin implements Listener {
             total += money;
             if (!Double.isFinite(total) || total < 0D) return SalePlan.empty(original.length);
 
-            SaleLine previous = lines.get(item);
-            lines.put(item, previous == null
+            SaleLine previous = lines.get(match.token());
+            lines.put(match.token(), previous == null
                     ? new SaleLine(amount, money)
                     : new SaleLine(previous.units() + amount, previous.baseMoney() + money));
             result[slot] = null;
         }
 
         return new SalePlan(units, total, result, Map.copyOf(lines));
-    }
-
-    private ShopItem findSafeSellMatch(ItemStack stack) {
-        ShopItem generic = null;
-
-        for (var section : shop.catalog().sections()) {
-            for (ShopItem item : section.items()) {
-                if (!item.canSell() || item.material() != stack.getType()) continue;
-                if (item.customTemplate() && shop.catalog().matches(stack, item)) return item;
-                if (!item.customTemplate() && generic == null) generic = item;
-            }
-        }
-
-        return generic != null && isPlainGenericStack(stack) ? generic : null;
-    }
-
-    private boolean isPlainGenericStack(ItemStack stack) {
-        ItemStack one = stack.clone();
-        one.setAmount(1);
-        return one.isSimilar(new ItemStack(stack.getType()));
     }
 
     private ItemStack createWand(int uses, double multiplier) {
@@ -520,7 +513,7 @@ public final class MiraSellWandsPlugin extends JavaPlugin implements Listener {
     private record SaleLine(int units, double baseMoney) { }
 
     private record SalePlan(int units, double baseMoney, ItemStack[] resultContents,
-                            Map<ShopItem, SaleLine> lines) {
+                            Map<Object, SaleLine> lines) {
         static SalePlan empty(int size) {
             return new SalePlan(0, 0D, new ItemStack[size], Map.of());
         }
