@@ -57,5 +57,5 @@ jobs:
             gh release create "$TAG" "$JAR" \
               --target "${{ github.sha }}" \
               --title "MiraSellWands $TAG" \
-              --notes "Cleans sell success messages by removing wand serial IDs, using human item names, and formatting money with comma grouping. Example: Sold 64 Diamonds for $19,200. Collector sales use the same format and mixed-item sales fall back to Items."
+              --notes "Fixes MiraCollector detection for sell wands across Paper plugin classloaders. Collector barrels are now identified directly by their PDC marker, and the bridge invokes methods through the public CollectorsApi service interface instead of the private provider implementation, preventing collector clicks from falling through to normal container selling."
           fi
