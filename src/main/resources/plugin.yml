@@ -5,7 +5,7 @@ api-version: '1.21'
 author: FiveSOCE
 description: Transaction-safe MiraShop container sell wands for the Mira ecosystem.
 depend: [MiraCore]
-softdepend: [MiraShop, Vault, MiraCosmetics]
+softdepend: [MiraShop, MiraCollectors, Vault, MiraCosmetics]
 commands:
   sellwand:
     description: Sell wand administration
