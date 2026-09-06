@@ -55,5 +55,5 @@ jobs:
             gh release create "$TAG" "$JAR" \
               --target "${{ github.sha }}" \
               --title "MiraSellWands $TAG" \
-              --notes "Fixes plugin bootstrap recognition by removing Vault as a hard dependency, isolating Vault API classes behind an optional economy bridge, and updating compatibility pins to MiraCore 0.4.1 and MiraShop 0.1.12."
+              --notes "Fixes confirmed Paper bootstrap failure when MiraShop is missing by moving MiraShop to softdepend and isolating all MiraShop API linkage behind an optional bridge. MiraSellWands now loads in a degraded state without MiraShop and disables selling until MiraShop is available."
           fi
