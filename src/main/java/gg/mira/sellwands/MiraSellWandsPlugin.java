@@ -182,6 +182,9 @@ public final class MiraSellWandsPlugin extends JavaPlugin implements Listener {
         Player player = event.getPlayer();
 
         if (shop == null || !shop.available()) {
+            shop = createShopBridge();
+        }
+        if (shop == null || !shop.available()) {
             msg(player, "&cMiraShop is currently unavailable, so sell wands cannot price items.");
             return;
         }
