@@ -57,5 +57,5 @@ jobs:
             gh release create "$TAG" "$JAR" \
               --target "${{ github.sha }}" \
               --title "MiraSellWands $TAG" \
-              --notes "Fixes confirmed Paper bootstrap failure when MiraShop is missing by moving MiraShop to softdepend and isolating all MiraShop API linkage behind an optional bridge. MiraSellWands now loads in a degraded state without MiraShop and disables selling until MiraShop is available."
+              --notes "Cleans sell success messages by removing wand serial IDs, using human item names, and formatting money with comma grouping. Example: Sold 64 Diamonds for $19,200. Collector sales use the same format and mixed-item sales fall back to Items."
           fi
