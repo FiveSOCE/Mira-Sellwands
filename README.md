@@ -1,4 +1,8 @@
-## v0.1.5 MiraShop bootstrap fix
+## v0.1.6 MiraShop bridge fix
+
+The MiraShop integration no longer hard-links MiraShop implementation classes through the SellWands classloader. The optional bridge resolves MiraShop dynamically and retries availability when a wand is used, fixing false `MiraShop is currently unavailable` responses while MiraShop is healthy.
+
+## v0.1.6 MiraShop bootstrap fix
 
 - MiraShop is now a soft bootstrap dependency.
 - All MiraShop API linkage is isolated behind an optional bridge.
@@ -11,7 +15,7 @@ MiraSellWands provides transaction-safe container sell wands for the Mira Paper 
 
 ## Download
 
-[**Download MiraSellWands v0.1.5**](https://github.com/FiveSOCE/Mira-Sellwands/releases/download/v0.1.5/MiraSellWands-0.1.5.jar)
+[**Download MiraSellWands v0.1.6**](https://github.com/FiveSOCE/Mira-Sellwands/releases/download/v0.1.6/MiraSellWands-0.1.6.jar)
 
 [View All Releases](https://github.com/FiveSOCE/Mira-Sellwands/releases)
 
@@ -26,7 +30,7 @@ MiraSellWands provides transaction-safe container sell wands for the Mira Paper 
 
 ## Bootstrap compatibility fix (0.1.4)
 
-v0.1.5 fixes a plugin-recognition/bootstrap issue.
+v0.1.6 fixes a plugin-recognition/bootstrap issue.
 
 - Vault is no longer a hard `plugin.yml` dependency.
 - Vault API classes are isolated behind an optional economy bridge, so Paper can recognize and enable MiraSellWands even when Vault is absent or unavailable during dependency resolution.
@@ -90,7 +94,7 @@ Adds optional MiraCosmetics audio for successful container cash-outs. Each compl
 
 ## SellWand Tiers and Charges (0.1.3)
 
-v0.1.5 formalizes the existing charge system into configurable tiers while preserving custom numeric admin creation.
+v0.1.6 formalizes the existing charge system into configurable tiers while preserving custom numeric admin creation.
 
 Default tiers:
 
