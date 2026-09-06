@@ -4,7 +4,7 @@ import java.security.MessageDigest
 plugins { java }
 
 group = "gg.mira"
-version = "0.1.3"
+version = "0.1.4"
 
 repositories {
     mavenCentral()
@@ -12,12 +12,12 @@ repositories {
     maven("https://jitpack.io")
 }
 
-val miraCoreVersion = "0.2.0"
-val miraCoreSha256 = "66433a266a76088d2a2de90ac1beb1a5a183c26891ee8f394827b47830195b03"
+val miraCoreVersion = "0.4.1"
+val miraCoreSha256 = "4a20f538762bb550b4f8c359eb16945eee786ed0741ba60c0dbfc7e07e2249a9"
 val miraCoreJar = layout.projectDirectory.file("libs/MiraCore-$miraCoreVersion.jar").asFile
 
-val miraShopVersion = "0.1.8"
-val miraShopSha256 = "c59b39fc7ebfc17e04b8d6225559410be83ab8851dbd3f3803def11fc3d5bab2"
+val miraShopVersion = "0.1.12"
+val miraShopSha256 = "a2b2299c5282b64f32c72df1f721cd90234b0171650c9ea475f242f3046453a3"
 val miraShopJar = layout.projectDirectory.file("libs/MiraShop-$miraShopVersion.jar").asFile
 
 fun sha256(file: File): String {
@@ -65,3 +65,8 @@ tasks.withType<JavaCompile>().configureEach {
 }
 
 tasks.jar { archiveFileName.set("MiraSellWands-${project.version}.jar") }
+
+
+tasks.processResources {
+    filesMatching("plugin.yml") { expand("version" to project.version) }
+}
