@@ -285,9 +285,8 @@ public final class MiraSellWandsPlugin extends JavaPlugin implements Listener {
                     ));
         }
 
-        msg(player, "&aSold &f" + plan.units() + " &aitems for &f$"
-                + String.format(Locale.US, "%.2f", payout)
-                + "&a using wand &f" + shortSerial(serial) + "&a.");
+        msg(player, "&aSold &f" + plan.units() + " &a" + saleLabel(plan) + " for &f$"
+                + formatMoney(payout));
     }
 
     private void handleCollectorSale(Player player, ItemStack wand, Location location) {
@@ -349,9 +348,7 @@ public final class MiraSellWandsPlugin extends JavaPlugin implements Listener {
                         "z", Integer.toString(location.getBlockZ())
                 ));
 
-        msg(player, "&aSold &f" + result.units() + " &aitems from the collector for &f$"
-                + String.format(Locale.US, "%.2f", result.payout())
-                + "&a using wand &f" + shortSerial(serial) + "&a.");
+        msg(player, "&aSold &f" + result.units() + " &aItems for &f$" + formatMoney(result.payout()));
     }
 
     private ShopBridge createShopBridge() {
@@ -517,6 +514,39 @@ public final class MiraSellWandsPlugin extends JavaPlugin implements Listener {
         if (!Double.isFinite(price) || price < 0D || !Double.isFinite(amount) || amount < 0D) return -1D;
         double total = price * amount;
         return Double.isFinite(total) && total >= 0D ? total : -1D;
+    }
+
+    private String saleLabel(SalePlan plan) {
+        if (plan.lines().size() != 1) return "Items";
+
+        Object token = plan.lines().keySet().iterator().next();
+        try {
+            Object material = token.getClass().getMethod("material").invoke(token);
+            if (material instanceof Material mat) return prettyMaterial(mat, plan.units());
+        } catch (ReflectiveOperationException ignored) {
+        }
+        return "Items";
+    }
+
+    private static String prettyMaterial(Material material, int amount) {
+        String lower = material.name().toLowerCase(Locale.ROOT).replace('_', ' ');
+        StringBuilder out = new StringBuilder();
+        for (String word : lower.split(" ")) {
+            if (!out.isEmpty()) out.append(' ');
+            out.append(Character.toUpperCase(word.charAt(0))).append(word.substring(1));
+        }
+        String name = out.toString();
+        if (amount == 1) return name;
+        if (name.endsWith("s")) return name;
+        return name + "s";
+    }
+
+    private static String formatMoney(double amount) {
+        double rounded = Math.rint(amount * 100.0D) / 100.0D;
+        if (Math.abs(rounded - Math.rint(rounded)) < 0.0000001D) {
+            return String.format(Locale.US, "%,.0f", rounded);
+        }
+        return String.format(Locale.US, "%,.2f", rounded);
     }
 
     private static String shortSerial(String serial) {
