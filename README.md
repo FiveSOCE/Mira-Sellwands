@@ -1,3 +1,13 @@
+# MiraSellWands
+
+## Download
+
+**Latest compatibility release: v0.1.10**
+
+[**Download MiraSellWands-0.1.10.jar**](https://github.com/FiveSOCE/Mira-Sellwands/releases/download/v0.1.10/MiraSellWands-0.1.10.jar)
+
+[View all releases](https://github.com/FiveSOCE/Mira-Sellwands/releases)
+
 ## v0.1.6 MiraShop bridge fix
 
 The MiraShop integration no longer hard-links MiraShop implementation classes through the SellWands classloader. The optional bridge resolves MiraShop dynamically and retries availability when a wand is used, fixing false `MiraShop is currently unavailable` responses while MiraShop is healthy.
@@ -12,12 +22,6 @@ The MiraShop integration no longer hard-links MiraShop implementation classes th
 # MiraSellWands
 
 MiraSellWands provides transaction-safe container sell wands for the Mira Paper server suite. Players can right-click supported Bukkit containers to sell eligible contents at current MiraShop prices, including active sale-event pricing, with Vault payouts and persistent wand identities.
-
-## Download
-
-[**Download MiraSellWands v0.1.6**](https://github.com/FiveSOCE/Mira-Sellwands/releases/download/v0.1.10/MiraSellWands-0.1.10.jar)
-
-[View All Releases](https://github.com/FiveSOCE/Mira-Sellwands/releases)
 
 ## Requirements / Dependencies
 
