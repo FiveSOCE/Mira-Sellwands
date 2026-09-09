@@ -15,7 +15,7 @@ MiraSellWands provides transaction-safe container sell wands for the Mira Paper 
 
 ## Download
 
-[**Download MiraSellWands v0.1.6**](https://github.com/FiveSOCE/Mira-Sellwands/releases/download/v0.1.6/MiraSellWands-0.1.6.jar)
+[**Download MiraSellWands v0.1.6**](https://github.com/FiveSOCE/Mira-Sellwands/releases/download/v0.1.10/MiraSellWands-0.1.10.jar)
 
 [View All Releases](https://github.com/FiveSOCE/Mira-Sellwands/releases)
 
